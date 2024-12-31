@@ -625,5 +625,5 @@ int main(){
 
     string input = "UpdatedCricketData.csv";
     string output = "UpdatedCricketDatav2.csv";
-    //analyzeGame(input, output);
+    analyzeGame(input, output);
 }
