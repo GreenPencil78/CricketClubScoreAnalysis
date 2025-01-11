@@ -23,6 +23,10 @@ How to format the scoresheet:
   For run outs on a no ball write runs gained, where the run out occurred, and NBW, ex: "12NBW"
   If a batsman retires not out hurt, write who retired (striker's or non-striker's end) and NOH, ex: "1NOH" or "2noh"
   If a batsman retires out, write who retired (striker's or non-striker's end) and RO, ex: "1RO" or "2ro"
+  If a bowler is subbed out in the middle of an over, write "-s" at the end of the line and start a new line
+    ex:
+      Watson: W 0 W -s
+      Ashwin: 6 4 1
   
   Ex:
   Keshav Maharaj: 0 1 4 W WD 5NB 2RO 2 11W
