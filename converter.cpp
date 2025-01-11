@@ -168,7 +168,14 @@ void parseInput(string input){
 
     string figures = input.substr(colon + 2, input.length() - colon);
     //cout << figures << endl;
-
+    
+    //checks to see if a bowler was subbed in for another bowler
+    bool sub = false;
+    if (figures.find("-s") != string::npos){
+        sub = true;
+        figures = figures.substr(0, figures.find("-s") - 1);
+    }
+    
     //Push all balls in the over to the stats vector
     vector <string> stats;
     while(figures.find(" ") != string::npos){
@@ -329,17 +336,20 @@ void parseInput(string input){
             if (runs %2 == 1){
                 updateStrike(in);
             }
-
         }
     }
+    //Showing that one full over has been bowled
     if (((int)(10*prevBowlers[index].overs) % 10) == 6){
         prevBowlers[index].overs += 0.4;
     }
-    if (maiden == true){
+    //checking if maiden is true and a full over has been bowled
+    if (maiden == true && (int)(10*prevBowlers[index].overs) % 10 == 0){
         prevBowlers[index].maidens++;
     }
     //Update strike at the end of the over
-    updateStrike(getBatsmanOnStrike());
+    if (sub == false){
+        updateStrike(getBatsmanOnStrike());
+    }
 }
 
 //Fixes the batsman vector's stats in case someone was not out hurt and they came back later
