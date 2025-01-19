@@ -580,7 +580,7 @@ bool writeRecordToNewSpreadsheet(string filename){
 
 //Initializing batting lineup in batsmen vector
 void initializeBattingLineup(string input){
-    ifstream batting("battinglineup.txt");
+    ifstream batting(input);
     string s;
     while(getline(batting,s)){
         batsman newBat = batsman(s);
