@@ -14,16 +14,22 @@ struct bowler{
     int wides;
     int nb;
     int maidens;
-    double overs;
+    int balls;
+    bool lastBallWicket;
+    bool secondLastBallWicket;
+    int hattricks;
 
     bowler(string nom){
         name = nom;
         wickets = 0;
         runs = 0;
         maidens = 0;
-        overs = 0.0;
+        balls = 0;
         wides = 0;
         nb = 0;
+        lastBallWicket = false;
+        secondLastBallWicket = false;
+        hattricks = 0;
     }
 };
 
@@ -168,14 +174,14 @@ void parseInput(string input){
 
     string figures = input.substr(colon + 2, input.length() - colon);
     //cout << figures << endl;
-    
+
     //checks to see if a bowler was subbed in for another bowler
     bool sub = false;
     if (figures.find("-s") != string::npos){
         sub = true;
         figures = figures.substr(0, figures.find("-s") - 1);
     }
-    
+
     //Push all balls in the over to the stats vector
     vector <string> stats;
     while(figures.find(" ") != string::npos){
@@ -192,12 +198,31 @@ void parseInput(string input){
             figures = "1" + figures;
         }
     stats.push_back(figures);
-
+    
+    bool lastBatsman = false;
     bool maiden = true;
+    int legalBalls = 0;
     for (int i = 0; i < stats.size(); i++){
+        //Last Batter Standing
+        if (wickets == batsmen.size() - 1){
+            lastBatsman = true;
+            batsmen[getBatsmanOffStrike()].onStrike = true;
+        }
+
         if ((stats[i].compare("W") == 0) || stats[i].compare("w") == 0){
-            prevBowlers[index].overs += 0.1;
+            prevBowlers[index].balls++;
+            legalBalls++;
             prevBowlers[index].wickets++;
+            //check for hattricks
+            if (prevBowlers[index].secondLastBallWicket == true){
+                prevBowlers[index].hattricks++;
+            }
+            if (prevBowlers[index].lastBallWicket == true){
+                prevBowlers[index].secondLastBallWicket = true;
+            }
+            else{
+                prevBowlers[index].lastBallWicket = true;
+            }
             wickets++;
             int in = getBatsmanOnStrike();
             batsmen[in].ballsFaced++;
@@ -237,6 +262,7 @@ void parseInput(string input){
 
         //No Ball Run Out
         //Format: runs, where run out occurred, NBW
+        //Ex: 12NBW
         else if ((stats[i].find("NBW") != string::npos || stats[i].find("nbw") != string::npos || stats[i].find("NBw") != string::npos || stats[i].find("nbW") != string::npos || stats[i].find("Nbw") != string::npos) && stats[i].length() > 2){
             prevBowlers[index].nb++;
             char runs = stats[i].at(0);
@@ -261,6 +287,8 @@ void parseInput(string input){
             else if (end == 2){
                 nextBatsman(true);
             }
+            prevBowlers[index].secondLastBallWicket = false;
+            prevBowlers[index].lastBallWicket = false;
         }
 
         //Run out
@@ -268,7 +296,8 @@ void parseInput(string input){
         //Ex: 11W means 1 run and run out occurred at the striker's end
         //02W means no runs and run out occurred at the non striker's end
         else if ((stats[i].find("W") != string::npos || stats[i].find("w") != string::npos) && stats[i].length() > 1){
-            prevBowlers[index].overs += 0.1;
+            prevBowlers[index].balls++;
+            legalBalls++;
             char runs = stats[i].at(0);
             int r = runs - '0';
             prevBowlers[index].runs += r;
@@ -293,6 +322,8 @@ void parseInput(string input){
             else if (end == 2){
                 nextBatsman(true);
             }
+            prevBowlers[index].secondLastBallWicket = false;
+            prevBowlers[index].lastBallWicket = false;
         }
         
         else if (stats[i].find("NB") != string::npos || stats[i].find("nb") != string::npos || stats[i].find("Nb") != string::npos){
@@ -311,13 +342,16 @@ void parseInput(string input){
             if ((r - 1) == 6){
                 batsmen[in].sixes++;
             }
-            if ((r - 1) %2 == 1){
+            if ((r - 1) %2 == 1 && lastBatsman == false){
                 updateStrike(in);
             }
+            prevBowlers[index].secondLastBallWicket = false;
+            prevBowlers[index].lastBallWicket = false;
         }
 
         else{
-            prevBowlers[index].overs += 0.1;
+            prevBowlers[index].balls++;
+            legalBalls++;
             int runs = stoi(stats[i]);
             prevBowlers[index].runs += runs;
             if (runs != 0){
@@ -333,21 +367,19 @@ void parseInput(string input){
             if (runs == 6){
                 batsmen[in].sixes++;
             }
-            if (runs %2 == 1){
+            if (runs %2 == 1 && lastBatsman == false){
                 updateStrike(in);
             }
+            prevBowlers[index].secondLastBallWicket = false;
+            prevBowlers[index].lastBallWicket = false;
         }
     }
-    //Showing that one full over has been bowled
-    if (((int)(10*prevBowlers[index].overs) % 10) == 6){
-        prevBowlers[index].overs += 0.4;
-    }
     //checking if maiden is true and a full over has been bowled
-    if (maiden == true && (int)(10*prevBowlers[index].overs) % 10 == 0){
+    if (maiden == true && legalBalls >= 6){
         prevBowlers[index].maidens++;
     }
     //Update strike at the end of the over
-    if (sub == false){
+    if (sub == false && lastBatsman == false){
         updateStrike(getBatsmanOnStrike());
     }
 }
@@ -378,12 +410,16 @@ void fixBatsmanStats(){
     }
 }
 
+double ballsBowledToOvers(int ballsBowled){
+    return ballsBowled/6 + (ballsBowled%6)/10.0;
+}
+
+//Displays the stats for everyone who bowled
 void displayBowlerStats(){
     for (int i = 0; i < prevBowlers.size(); i++){
-        cout << "Bowler Name: " << prevBowlers[i].name << endl;
-        cout << "Stats: " << prevBowlers[i].overs << "-" << prevBowlers[i].maidens << "-" << prevBowlers[i].runs << "-" << prevBowlers[i].wickets << endl;
-        double ballsBowled = 6*((int) prevBowlers[i].overs) + ((int)(10*prevBowlers[i].overs) % 10);
-        double econ = 6*prevBowlers[i].runs/ballsBowled;
+        cout << "Bowler: " << prevBowlers[i].name << endl;
+        cout << "Stats: " << ballsBowledToOvers(prevBowlers[i].balls) << "-" << prevBowlers[i].maidens << "-" << prevBowlers[i].runs << "-" << prevBowlers[i].wickets << endl;
+        double econ = 6.0*prevBowlers[i].runs/prevBowlers[i].balls;
         cout << "Economy: " << econ << endl;
         cout << "The number of wides bowled is " << prevBowlers[i].wides << endl;
         cout << "The number of no balls bowled is " << prevBowlers[i].nb << endl;
@@ -391,9 +427,10 @@ void displayBowlerStats(){
     }
 }
 
+//Displays the stats for everyone in the batting lineup
 void displayBatsmanStats(){
     for (int i = 0; i < batsmen.size(); i++){
-        cout << "Batsman Name: " << batsmen[i].name << endl;
+        cout << "Batsman: " << batsmen[i].name << endl;
         cout << "Stats: " << batsmen[i].runs;
         if (batsmen[i].out == false){
             cout << "*";
@@ -402,17 +439,18 @@ void displayBatsmanStats(){
         cout << "Strike Rate: " << 100*batsmen[i].runs/(double) batsmen[i].ballsFaced << endl;
         cout << "Fours hit: " << batsmen[i].fours << endl;
         cout << "Sixes hit: " << batsmen[i].sixes << endl;
-        cout << "Ducks: " << batsmen[i].ducks << endl;
+        //cout << "Ducks: " << batsmen[i].ducks << endl;
         cout << endl;
     }
 }
 
+//Displays the total score
 void displayScore(){
     int ballsBowled = 0;
     int runs = 0;
     for (int i = 0; i < prevBowlers.size(); i++){
         runs += prevBowlers[i].runs;
-        ballsBowled += 6*((int) prevBowlers[i].overs) + ((int)(10*prevBowlers[i].overs) % 10);
+        ballsBowled += prevBowlers[i].balls;
     }
     double overs = ((int) (ballsBowled/6.0)) + ((ballsBowled % 6)/10.0);
     cout << "Total score: " << runs << "/" << wickets << " in " << overs << " overs" << endl;
@@ -480,16 +518,24 @@ void updateBowling(int sp_index, int b_index){
     spreadsheet[sp_index][12] = to_string(stoi(spreadsheet[sp_index][12]) + prevBowlers[b_index].wickets);
     spreadsheet[sp_index][16] = to_string(stoi(spreadsheet[sp_index][16]) + prevBowlers[b_index].runs);
 
-    int ballsBowled = 6*((int) prevBowlers[b_index].overs) + ((int)(10*prevBowlers[b_index].overs) % 10);
-    spreadsheet[sp_index][17] = to_string(stoi(spreadsheet[sp_index][17]) + ballsBowled);
+    spreadsheet[sp_index][17] = to_string(stoi(spreadsheet[sp_index][17]) + prevBowlers[b_index].balls);
 
     //# of bowling innings
-    if (prevBowlers[b_index].overs > 0){
+    if (prevBowlers[b_index].balls > 0){
         spreadsheet[sp_index][18] = to_string(stoi(spreadsheet[sp_index][18]) + 1);
     }
     spreadsheet[sp_index][19] = to_string(stoi(spreadsheet[sp_index][19]) + prevBowlers[b_index].maidens);
     spreadsheet[sp_index][20] = to_string(stoi(spreadsheet[sp_index][20]) + prevBowlers[b_index].wides);
     spreadsheet[sp_index][21] = to_string(stoi(spreadsheet[sp_index][21]) + prevBowlers[b_index].nb);
+
+    //update 3 fers, 5 fers, and hat tricks
+    if (prevBowlers[b_index].wickets >= 5){
+        spreadsheet[sp_index][23] = to_string(stoi(spreadsheet[sp_index][23]) + 1);
+    }
+    else if (prevBowlers[b_index].wickets >= 3){
+        spreadsheet[sp_index][22] = to_string(stoi(spreadsheet[sp_index][22]) + 1);
+    }
+    spreadsheet[sp_index][24] = to_string(stoi(spreadsheet[sp_index][24]) + prevBowlers[b_index].hattricks);
 
     //update bowling average
     if (stoi(spreadsheet[sp_index][12]) != 0){
@@ -558,7 +604,7 @@ void printSpreadsheet(){
 }
 
 bool writeRecordToNewSpreadsheet(string filename){
-    string headers[] = {"Name", "Grade","Runs Scored", "Balls Faced", "Batting Average","Strike Rate","High Score", "# of fours hit", "# of sixes hit", "# of ducks", "# of times got out","# of bat innings","Wickets taken", "Bowling Average", "Economy", "Best figures", "Runs given","Legal Balls bowled","# of bowl innings", "# of maidens", "# of wides", "# of no balls"};
+    string headers[] = {"Name", "Grade","Runs Scored", "Balls Faced", "Batting Average","Strike Rate","High Score", "# of fours hit", "# of sixes hit", "# of ducks", "# of times got out","# of bat innings","Wickets taken", "Bowling Average", "Economy", "Best figures", "Runs given","Legal Balls bowled","# of bowl innings", "# of maidens", "# of wides", "# of no balls", "3 Fers", "5 Fers", "Hat tricks"};
     ofstream file;
     file.open(filename, ios_base::app);
     //putting in the headers
@@ -593,9 +639,8 @@ void initializeBattingLineup(string input){
 }
 
 void analyzeGame(string input, string output){
-    ifstream record;
+    ifstream record(input);
     string line;
-    record.open(input);
     int lineno = 0;
     while(getline(record,line)){
         if(lineno != 0){
@@ -610,18 +655,18 @@ void analyzeGame(string input, string output){
         lineno++;
     }
     record.close();
-    printSpreadsheet();
+    //printSpreadsheet();
     updateSpreadsheet();
-    printSpreadsheet();
+    //printSpreadsheet();
     writeRecordToNewSpreadsheet(output);
 }
 
 int main(){
-    string batting = "battinglineup.txt";
+    string batting = "battinglineup2 2-21-25.txt";
     initializeBattingLineup(batting);
 
     //Parse input of game
-    ifstream f("input.txt");
+    ifstream f("scoresheet2 2-21-25.txt");
     string l;
     while (getline(f, l)){
         parseInput(l);
@@ -633,7 +678,7 @@ int main(){
     displayBatsmanStats();
     displayScore();
 
-    string input = "UpdatedCricketData.csv";
-    string output = "UpdatedCricketDatav2.csv";
+    string input = "CricketClubRecords.csv";
+    string output = "Updated_Cricket_Club_Records.csv";
     analyzeGame(input, output);
 }
