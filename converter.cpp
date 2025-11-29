@@ -208,7 +208,10 @@ void parseInput(string input){
             lastBatsman = true;
             batsmen[getBatsmanOffStrike()].onStrike = true;
         }
-
+        else if (stats[i].find("CS") != string::npos || stats[i].find("cs") != string::npos || stats[i].find("Cs") != string::npos || stats[i].find("cS") != string::npos){
+            updateStrike(getBatsmanOnStrike());
+        }
+        
         if ((stats[i].compare("W") == 0) || stats[i].compare("w") == 0){
             prevBowlers[index].balls++;
             legalBalls++;
@@ -682,3 +685,4 @@ int main(){
     string output = "Updated_Cricket_Club_Records.csv";
     analyzeGame(input, output);
 }
+
